@@ -1,0 +1,232 @@
+-- ══════════════════════════════════════
+-- 1. ROLES
+-- ══════════════════════════════════════
+CREATE TABLE roles (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    nombre      VARCHAR(50) NOT NULL,  -- ADMIN, BIBLIOTECARIO, SOCIO
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ══════════════════════════════════════
+-- 2. USUARIOS
+-- ══════════════════════════════════════
+CREATE TABLE users (
+    id                  INT AUTO_INCREMENT PRIMARY KEY,
+    rol_id              INT NOT NULL,
+    nombre              VARCHAR(100) NOT NULL,
+    email               VARCHAR(150) NOT NULL UNIQUE,
+    password            VARCHAR(255) NOT NULL,
+    numero_socio        VARCHAR(20) UNIQUE,        -- solo para socios
+    telefono            VARCHAR(20),
+    estado              TINYINT(1) DEFAULT 1,      -- 1=activo, 0=inactivo
+    email_verified_at   TIMESTAMP NULL,
+    remember_token      VARCHAR(100),
+    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (rol_id) REFERENCES roles(id)
+);
+
+-- ══════════════════════════════════════
+-- 3. CATEGORIAS
+-- ══════════════════════════════════════
+CREATE TABLE categorias (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    nombre      VARCHAR(100) NOT NULL,
+    descripcion TEXT,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- ══════════════════════════════════════
+-- 4. AUTORES
+-- ══════════════════════════════════════
+CREATE TABLE autores (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    nombre          VARCHAR(150) NOT NULL,
+    nacionalidad    VARCHAR(100),
+    biografia       TEXT,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- ══════════════════════════════════════
+-- 5. LIBROS
+-- ══════════════════════════════════════
+CREATE TABLE libros (
+    id                  INT AUTO_INCREMENT PRIMARY KEY,
+    categoria_id        INT NOT NULL,
+    titulo              VARCHAR(255) NOT NULL,
+    isbn                VARCHAR(20) UNIQUE,
+    editorial           VARCHAR(150),
+    anio_publicacion    YEAR,
+    descripcion         TEXT,
+    portada_url         VARCHAR(255),
+    stock_total         INT DEFAULT 1,
+    stock_disponible    INT DEFAULT 1,
+    estado              TINYINT(1) DEFAULT 1,
+    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (categoria_id) REFERENCES categorias(id)
+);
+
+-- ══════════════════════════════════════
+-- 6. LIBRO_AUTOR (pivot many-to-many)
+-- ══════════════════════════════════════
+CREATE TABLE libro_autor (
+    libro_id    INT NOT NULL,
+    autor_id    INT NOT NULL,
+    PRIMARY KEY (libro_id, autor_id),
+    FOREIGN KEY (libro_id) REFERENCES libros(id) ON DELETE CASCADE,
+    FOREIGN KEY (autor_id) REFERENCES autores(id) ON DELETE CASCADE
+);
+
+-- ══════════════════════════════════════
+-- 7. PRESTAMOS
+-- ══════════════════════════════════════
+CREATE TABLE prestamos (
+    id                  INT AUTO_INCREMENT PRIMARY KEY,
+    user_id             INT NOT NULL,               -- socio
+    libro_id            INT NOT NULL,
+    bibliotecario_id    INT NOT NULL,               -- quien registró
+    fecha_prestamo      DATE NOT NULL,
+    fecha_devolucion    DATE NOT NULL,              -- fecha límite
+    fecha_retorno       DATE NULL,                  -- fecha real de devolución
+    estado              ENUM('ACTIVO','DEVUELTO','VENCIDO') DEFAULT 'ACTIVO',
+    observaciones       TEXT,
+    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id)           REFERENCES users(id),
+    FOREIGN KEY (libro_id)          REFERENCES libros(id),
+    FOREIGN KEY (bibliotecario_id)  REFERENCES users(id)
+);
+
+-- ══════════════════════════════════════
+-- 8. MULTAS
+-- ══════════════════════════════════════
+CREATE TABLE multas (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    prestamo_id     INT NOT NULL UNIQUE,
+    user_id         INT NOT NULL,
+    dias_retraso    INT NOT NULL DEFAULT 0,
+    monto           DECIMAL(8,2) NOT NULL DEFAULT 0.00,
+    estado          ENUM('PENDIENTE','PAGADA') DEFAULT 'PENDIENTE',
+    fecha_pago      DATE NULL,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (prestamo_id)   REFERENCES prestamos(id),
+    FOREIGN KEY (user_id)       REFERENCES users(id)
+);
+
+-- ══════════════════════════════════════
+-- 9. RESERVAS
+-- ══════════════════════════════════════
+CREATE TABLE reservas (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    user_id         INT NOT NULL,
+    libro_id        INT NOT NULL,
+    fecha_reserva   DATE NOT NULL,
+    fecha_expira    DATE NOT NULL,              -- expira en X días si no recoge
+    estado          ENUM('PENDIENTE','COMPLETADA','CANCELADA','EXPIRADA') DEFAULT 'PENDIENTE',
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id)   REFERENCES users(id),
+    FOREIGN KEY (libro_id)  REFERENCES libros(id)
+);
+
+
+-- ══════════════════════════════════════
+crear laravel
+-- ══════════════════════════════════════
+
+composer create-project laravel/laravel api-backend
+
+cd api-backend
+
+--(autenticación API para React)
+composer require laravel/sanctum
+
+APP_NAME=BibliotecaAPI
+APP_ENV=local
+APP_DEBUG=true
+APP_URL=http://localhost:8000
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3307
+DB_DATABASE=biblioteca
+DB_USERNAME=root
+DB_PASSWORD=123456
+
+
+
+
+php artisan make:migration create_roles_table
+php artisan make:migration create_users_table
+php artisan make:migration create_categorias_table
+php artisan make:migration create_autores_table
+php artisan make:migration create_libros_table
+php artisan make:migration create_libro_autor_table
+php artisan make:migration create_prestamos_table
+php artisan make:migration create_multas_table
+php artisan make:migration create_reservas_table
+
+
+
+luego cambiar uno por uno en migracion
+return new class extends Migration {
+    public function up(): void
+    {
+        if (!Schema::hasTable('users')) {
+            Schema::create('users', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('rol_id')->constrained('roles');
+                $table->string('nombre', 100);
+                $table->string('email', 150)->unique();
+                $table->string('password');
+                $table->string('numero_socio', 20)->unique()->nullable();
+                $table->string('telefono', 20)->nullable();
+                $table->tinyInteger('estado')->default(1);
+                $table->timestamp('email_verified_at')->nullable();
+                $table->rememberToken();
+                $table->timestamps();
+            });
+        }
+    }
+    public function down(): void
+    {
+        Schema::dropIfExists('users');
+    }
+};
+
+
+
+-- crear el modelo
+php artisan make:model Rol
+php artisan make:model Categoria
+php artisan make:model Autor
+php artisan make:model Libro
+php artisan make:model Prestamo
+php artisan make:model Multa
+php artisan make:model Reserva
+
+
+php artisan install:api
+
+
+--ejecutar
+php artisan serve
+
+==========================================================
+react + vite
+
+npm create vite@latest biblioteca-frontend -- --template react
+
+npm install axios react-router-dom
+
+npm install
+
+
+
+
+
+
