@@ -4,15 +4,19 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Multa;
-use Illuminate\Http\Request;
 
 class MultaController extends Controller
 {
     public function index()
     {
         $multas = Multa::with(['user', 'prestamo.libro'])
-            ->latest()->paginate(15);
-        return response()->json($multas);
+            ->latest()
+            ->paginate(20);
+
+        return response()->json([
+            'data' => $multas->items(),
+            'total' => $multas->total(),
+        ]);
     }
 
     public function pagar($id)
@@ -20,7 +24,9 @@ class MultaController extends Controller
         $multa = Multa::findOrFail($id);
 
         if ($multa->estado === 'PAGADA') {
-            return response()->json(['message' => 'La multa ya fue pagada.'], 422);
+            return response()->json([
+                'message' => 'La multa ya fue pagada.'
+            ], 422);
         }
 
         $multa->update([

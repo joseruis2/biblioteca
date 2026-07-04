@@ -72,4 +72,10 @@ class PrestamoController extends Controller
 
         return new PrestamoResource($prestamo->load(['socio', 'libro', 'multa']));
     }
+
+    public function show($id)
+{
+    $prestamo = Prestamo::with(['socio', 'libro', 'bibliotecario', 'multa'])->findOrFail($id);
+    return new PrestamoResource($prestamo);
+}
 }
